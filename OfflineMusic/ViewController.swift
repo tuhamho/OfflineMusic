@@ -1,5 +1,15 @@
 import UIKit
 
+private enum AppTheme {
+    static let background = UIColor(red: 0.071, green: 0.071, blue: 0.071, alpha: 1)
+    static let card = UIColor(red: 0.118, green: 0.118, blue: 0.118, alpha: 1)
+    static let navigation = UIColor(red: 0.094, green: 0.094, blue: 0.094, alpha: 1)
+    static let primary = UIColor.white
+    static let secondary = UIColor(red: 0.702, green: 0.702, blue: 0.702, alpha: 1)
+    static let separator = UIColor(red: 0.165, green: 0.165, blue: 0.165, alpha: 1)
+    static let accent = UIColor(red: 0.93, green: 0.22, blue: 0.38, alpha: 1)
+}
+
 final class ViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UIDocumentPickerDelegate {
     private let tableView = UITableView(frame: .zero, style: .plain)
     private let miniPlayer = UIView()
@@ -12,12 +22,16 @@ final class ViewController: UIViewController, UITableViewDataSource, UITableView
     private let manager = MusicPlayerManager.shared
     private var miniArtworkSongID: String?
 
+    override var preferredStatusBarStyle: UIStatusBarStyle { return .lightContent }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Offline Music"
-        view.backgroundColor = UIColor(white: 0.97, alpha: 1)
-        navigationController?.navigationBar.barTintColor = .white
-        navigationController?.navigationBar.tintColor = .black
+        view.backgroundColor = AppTheme.background
+        navigationController?.navigationBar.barStyle = .black
+        navigationController?.navigationBar.barTintColor = AppTheme.navigation
+        navigationController?.navigationBar.tintColor = AppTheme.accent
+        navigationController?.navigationBar.titleTextAttributes = [NSAttributedString.Key.foregroundColor: AppTheme.primary]
         navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(importAudio))
         configureTableView()
         configureMiniPlayer()
@@ -29,7 +43,7 @@ final class ViewController: UIViewController, UITableViewDataSource, UITableView
 
     private func configureTableView() {
         tableView.translatesAutoresizingMaskIntoConstraints = false
-        tableView.backgroundColor = .clear
+        tableView.backgroundColor = AppTheme.background
         tableView.separatorStyle = .none
         tableView.rowHeight = 72
         tableView.dataSource = self
@@ -45,8 +59,8 @@ final class ViewController: UIViewController, UITableViewDataSource, UITableView
 
     private func configureMiniPlayer() {
         miniPlayer.translatesAutoresizingMaskIntoConstraints = false
-        miniPlayer.backgroundColor = .white
-        miniPlayer.layer.borderColor = UIColor(white: 0.86, alpha: 1).cgColor
+        miniPlayer.backgroundColor = AppTheme.card
+        miniPlayer.layer.borderColor = AppTheme.separator.cgColor
         miniPlayer.layer.borderWidth = 0.5
         miniPlayer.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openPlayer)))
         view.addSubview(miniPlayer)
@@ -59,11 +73,12 @@ final class ViewController: UIViewController, UITableViewDataSource, UITableView
 
         miniTitle.translatesAutoresizingMaskIntoConstraints = false
         miniTitle.font = .systemFont(ofSize: 14, weight: .medium)
+        miniTitle.textColor = AppTheme.primary
         miniTitle.numberOfLines = 1
         miniPlayer.addSubview(miniTitle)
         miniSubtitle.translatesAutoresizingMaskIntoConstraints = false
         miniSubtitle.font = .systemFont(ofSize: 12)
-        miniSubtitle.textColor = .gray
+        miniSubtitle.textColor = AppTheme.secondary
         miniPlayer.addSubview(miniSubtitle)
 
         configureButton(miniPlayButton, title: "Play", action: #selector(togglePlayback))
@@ -96,6 +111,7 @@ final class ViewController: UIViewController, UITableViewDataSource, UITableView
     private func configureButton(_ button: UIButton, title: String, action: Selector) {
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setTitle(title, for: .normal)
+        button.setTitleColor(AppTheme.accent, for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 12, weight: .medium)
         button.addTarget(self, action: action, for: .touchUpInside)
         miniPlayer.addSubview(button)
@@ -171,22 +187,26 @@ private final class SongCell: UITableViewCell {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         backgroundColor = .clear
         selectionStyle = .gray
+        contentView.backgroundColor = AppTheme.card
+        contentView.layer.cornerRadius = 8
+        contentView.layer.masksToBounds = true
         artworkView.translatesAutoresizingMaskIntoConstraints = false
         artworkView.contentMode = .scaleAspectFill
         artworkView.clipsToBounds = true
-        artworkView.backgroundColor = UIColor(white: 0.88, alpha: 1)
+        artworkView.backgroundColor = AppTheme.separator
         contentView.addSubview(artworkView)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = .systemFont(ofSize: 15, weight: .medium)
+        titleLabel.textColor = AppTheme.primary
         titleLabel.numberOfLines = 1
         contentView.addSubview(titleLabel)
         artistLabel.translatesAutoresizingMaskIntoConstraints = false
         artistLabel.font = .systemFont(ofSize: 13)
-        artistLabel.textColor = .gray
+        artistLabel.textColor = AppTheme.secondary
         contentView.addSubview(artistLabel)
         durationLabel.translatesAutoresizingMaskIntoConstraints = false
         durationLabel.font = .systemFont(ofSize: 12)
-        durationLabel.textColor = .gray
+        durationLabel.textColor = AppTheme.secondary
         contentView.addSubview(durationLabel)
         NSLayoutConstraint.activate([
             artworkView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 12),

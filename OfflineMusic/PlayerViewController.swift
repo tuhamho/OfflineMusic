@@ -1,5 +1,14 @@
 import UIKit
 
+private enum PlayerTheme {
+    static let background = UIColor(red: 0.071, green: 0.071, blue: 0.071, alpha: 1)
+    static let navigation = UIColor(red: 0.094, green: 0.094, blue: 0.094, alpha: 1)
+    static let primary = UIColor.white
+    static let secondary = UIColor(red: 0.702, green: 0.702, blue: 0.702, alpha: 1)
+    static let accent = UIColor(red: 0.93, green: 0.22, blue: 0.38, alpha: 1)
+    static let track = UIColor(red: 0.27, green: 0.27, blue: 0.27, alpha: 1)
+}
+
 final class PlayerViewController: UIViewController {
     private let artworkView = UIImageView()
     private let titleLabel = UILabel()
@@ -16,10 +25,16 @@ final class PlayerViewController: UIViewController {
     private var isScrubbing = false
     private var artworkSongID: String?
 
+    override var preferredStatusBarStyle: UIStatusBarStyle { return .lightContent }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Now Playing"
-        view.backgroundColor = .white
+        view.backgroundColor = PlayerTheme.background
+        navigationController?.navigationBar.barStyle = .black
+        navigationController?.navigationBar.barTintColor = PlayerTheme.navigation
+        navigationController?.navigationBar.tintColor = PlayerTheme.accent
+        navigationController?.navigationBar.titleTextAttributes = [NSAttributedString.Key.foregroundColor: PlayerTheme.primary]
         configureViews()
         NotificationCenter.default.addObserver(self, selector: #selector(playerChanged), name: MusicPlayerManager.didChangeNotification, object: manager)
         refresh()
@@ -30,24 +45,28 @@ final class PlayerViewController: UIViewController {
     private func configureViews() {
         artworkView.translatesAutoresizingMaskIntoConstraints = false
         artworkView.contentMode = .scaleAspectFit
-        artworkView.backgroundColor = UIColor(white: 0.9, alpha: 1)
+        artworkView.backgroundColor = PlayerTheme.navigation
         artworkView.clipsToBounds = true
         view.addSubview(artworkView)
 
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.textAlignment = .center
         titleLabel.font = .systemFont(ofSize: 20, weight: .semibold)
+        titleLabel.textColor = PlayerTheme.primary
         titleLabel.numberOfLines = 2
         view.addSubview(titleLabel)
 
         artistLabel.translatesAutoresizingMaskIntoConstraints = false
         artistLabel.textAlignment = .center
         artistLabel.font = .systemFont(ofSize: 15)
-        artistLabel.textColor = .gray
+        artistLabel.textColor = PlayerTheme.secondary
         view.addSubview(artistLabel)
 
         slider.translatesAutoresizingMaskIntoConstraints = false
         slider.minimumValue = 0
+        slider.minimumTrackTintColor = PlayerTheme.accent
+        slider.maximumTrackTintColor = PlayerTheme.track
+        slider.thumbTintColor = PlayerTheme.primary
         slider.addTarget(self, action: #selector(sliderChanged), for: .valueChanged)
         slider.addTarget(self, action: #selector(sliderBegan), for: .touchDown)
         slider.addTarget(self, action: #selector(sliderEnded), for: [.touchUpInside, .touchUpOutside, .touchCancel])
@@ -57,8 +76,8 @@ final class PlayerViewController: UIViewController {
         durationLabel.translatesAutoresizingMaskIntoConstraints = false
         elapsedLabel.font = .systemFont(ofSize: 12)
         durationLabel.font = .systemFont(ofSize: 12)
-        elapsedLabel.textColor = .gray
-        durationLabel.textColor = .gray
+        elapsedLabel.textColor = PlayerTheme.secondary
+        durationLabel.textColor = PlayerTheme.secondary
         view.addSubview(elapsedLabel)
         view.addSubview(durationLabel)
 
@@ -105,6 +124,7 @@ final class PlayerViewController: UIViewController {
 
     private func configureButton(_ button: UIButton, title: String, action: Selector) {
         button.setTitle(title, for: .normal)
+        button.setTitleColor(PlayerTheme.secondary, for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 11, weight: .medium)
         button.titleLabel?.adjustsFontSizeToFitWidth = true
         button.addTarget(self, action: action, for: .touchUpInside)
@@ -128,8 +148,12 @@ final class PlayerViewController: UIViewController {
             slider.value = Float(min(current, song.duration))
         }
         playButton.setTitle(manager.isPlaying ? "Pause" : "Play", for: .normal)
+        playButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
+        playButton.setTitleColor(PlayerTheme.primary, for: .normal)
         shuffleButton.alpha = manager.shuffle ? 1 : 0.5
+        shuffleButton.setTitleColor(manager.shuffle ? PlayerTheme.accent : PlayerTheme.secondary, for: .normal)
         repeatButton.setTitle(repeatTitle(), for: .normal)
+        repeatButton.setTitleColor(manager.repeatMode == .off ? PlayerTheme.secondary : PlayerTheme.accent, for: .normal)
     }
 
     @objc private func sliderBegan() { isScrubbing = true }
