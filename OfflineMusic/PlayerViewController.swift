@@ -14,7 +14,7 @@ final class PlayerViewController: UIViewController {
     private let titleLabel = UILabel()
     private let artistLabel = UILabel()
     private let slider = UISlider()
-    private let elapsedLabel = UILabel()
+    private let currentTimeLabel = UILabel()
     private let durationLabel = UILabel()
     private let shuffleButton = PlaybackIconButton()
     private let previousButton = PlaybackIconButton()
@@ -22,7 +22,7 @@ final class PlayerViewController: UIViewController {
     private let nextButton = PlaybackIconButton()
     private let repeatButton = PlaybackIconButton()
     private let manager = MusicPlayerManager.shared
-    private var isScrubbing = false
+    private var isSeeking = false
     private var artworkSongID: String?
 
     override var preferredStatusBarStyle: UIStatusBarStyle { return .lightContent }
@@ -64,21 +64,27 @@ final class PlayerViewController: UIViewController {
 
         slider.translatesAutoresizingMaskIntoConstraints = false
         slider.minimumValue = 0
+        slider.isUserInteractionEnabled = true
+        slider.isEnabled = true
         slider.minimumTrackTintColor = PlayerTheme.accent
         slider.maximumTrackTintColor = PlayerTheme.track
         slider.thumbTintColor = PlayerTheme.primary
-        slider.addTarget(self, action: #selector(sliderChanged), for: .valueChanged)
         slider.addTarget(self, action: #selector(sliderBegan), for: .touchDown)
-        slider.addTarget(self, action: #selector(sliderEnded), for: [.touchUpInside, .touchUpOutside, .touchCancel])
+        slider.addTarget(self, action: #selector(sliderChanged), for: .valueChanged)
+        slider.addTarget(self, action: #selector(sliderEnded), for: .touchUpInside)
+        slider.addTarget(self, action: #selector(sliderEnded), for: .touchUpOutside)
+        slider.addTarget(self, action: #selector(sliderEnded), for: .touchCancel)
         view.addSubview(slider)
 
-        elapsedLabel.translatesAutoresizingMaskIntoConstraints = false
+        currentTimeLabel.translatesAutoresizingMaskIntoConstraints = false
         durationLabel.translatesAutoresizingMaskIntoConstraints = false
-        elapsedLabel.font = .systemFont(ofSize: 12)
+        currentTimeLabel.font = .systemFont(ofSize: 12)
         durationLabel.font = .systemFont(ofSize: 12)
-        elapsedLabel.textColor = PlayerTheme.secondary
+        currentTimeLabel.textColor = PlayerTheme.primary
         durationLabel.textColor = PlayerTheme.secondary
-        view.addSubview(elapsedLabel)
+        currentTimeLabel.textAlignment = .left
+        durationLabel.textAlignment = .right
+        view.addSubview(currentTimeLabel)
         view.addSubview(durationLabel)
 
         configureButton(shuffleButton, kind: .shuffle, action: #selector(toggleShuffle))
@@ -108,13 +114,16 @@ final class PlayerViewController: UIViewController {
             artistLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
             artistLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
             slider.topAnchor.constraint(equalTo: artistLabel.bottomAnchor, constant: 22),
-            slider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 18),
-            slider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -18),
-            elapsedLabel.topAnchor.constraint(equalTo: slider.bottomAnchor, constant: 2),
-            elapsedLabel.leadingAnchor.constraint(equalTo: slider.leadingAnchor),
-            durationLabel.topAnchor.constraint(equalTo: elapsedLabel.topAnchor),
-            durationLabel.trailingAnchor.constraint(equalTo: slider.trailingAnchor),
-            controls.topAnchor.constraint(equalTo: elapsedLabel.bottomAnchor, constant: 22),
+            slider.leadingAnchor.constraint(equalTo: currentTimeLabel.trailingAnchor, constant: 6),
+            slider.trailingAnchor.constraint(equalTo: durationLabel.leadingAnchor, constant: -6),
+            slider.heightAnchor.constraint(equalToConstant: 44),
+            currentTimeLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 18),
+            currentTimeLabel.centerYAnchor.constraint(equalTo: slider.centerYAnchor),
+            currentTimeLabel.widthAnchor.constraint(equalToConstant: 42),
+            durationLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -18),
+            durationLabel.centerYAnchor.constraint(equalTo: slider.centerYAnchor),
+            durationLabel.widthAnchor.constraint(equalToConstant: 42),
+            controls.topAnchor.constraint(equalTo: slider.bottomAnchor, constant: 22),
             controls.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 6),
             controls.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -6),
             controls.heightAnchor.constraint(equalToConstant: 60),
@@ -139,12 +148,13 @@ final class PlayerViewController: UIViewController {
             artworkView.image = song.artworkData.flatMap { UIImage(data: $0) }
             artworkSongID = song.id
         }
-        durationLabel.text = format(song.duration)
-        if !isScrubbing {
-            let current = max(0, manager.player.currentTime().seconds)
-            elapsedLabel.text = format(current)
-            slider.maximumValue = Float(max(1, song.duration))
-            slider.value = Float(min(current, song.duration))
+        let duration = validTime(song.duration)
+        durationLabel.text = formatTime(duration)
+        slider.maximumValue = Float(duration)
+        if !isSeeking {
+            let current = min(validTime(manager.player.currentTime().seconds), duration)
+            currentTimeLabel.text = formatTime(current)
+            slider.value = Float(current)
         }
         playButton.iconKind = manager.isPlaying ? .pause : .play
         playButton.iconColor = .black
@@ -153,9 +163,20 @@ final class PlayerViewController: UIViewController {
         repeatButton.iconColor = manager.repeatMode == .off ? PlayerTheme.secondary : PlayerTheme.accent
     }
 
-    @objc private func sliderBegan() { isScrubbing = true }
-    @objc private func sliderChanged() { elapsedLabel.text = format(TimeInterval(slider.value)) }
-    @objc private func sliderEnded() { isScrubbing = false; manager.seek(to: TimeInterval(slider.value)); refresh() }
+    @objc private func sliderBegan() {
+        isSeeking = true
+        currentTimeLabel.text = formatTime(Double(slider.value))
+    }
+
+    @objc private func sliderChanged() {
+        currentTimeLabel.text = formatTime(Double(slider.value))
+    }
+
+    @objc private func sliderEnded() {
+        manager.seek(to: Double(slider.value))
+        isSeeking = false
+        refresh()
+    }
     @objc private func toggleShuffle() { manager.shuffle.toggle(); refresh() }
     @objc private func previous() { manager.previous() }
     @objc private func togglePlay() { manager.togglePlayPause() }
@@ -164,5 +185,14 @@ final class PlayerViewController: UIViewController {
 }
     @objc private func cycleRepeat() { manager.repeatMode = RepeatMode(rawValue: (manager.repeatMode.rawValue + 1) % 3) ?? .off; refresh() }
 
-    private func format(_ seconds: TimeInterval) -> String { String(format: "%d:%02d", max(0, Int(seconds)) / 60, max(0, Int(seconds)) % 60) }
+    private func formatTime(_ seconds: Double) -> String {
+        let safeSeconds = validTime(seconds)
+        let totalSeconds = Int(safeSeconds.rounded(.down))
+        return String(format: "%d:%02d", totalSeconds / 60, totalSeconds % 60)
+    }
+
+    private func validTime(_ seconds: Double) -> Double {
+        guard seconds.isFinite, seconds >= 0 else { return 0 }
+        return seconds
+    }
 }
