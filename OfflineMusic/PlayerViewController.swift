@@ -16,11 +16,11 @@ final class PlayerViewController: UIViewController {
     private let slider = UISlider()
     private let elapsedLabel = UILabel()
     private let durationLabel = UILabel()
-    private let shuffleButton = UIButton(type: .system)
-    private let previousButton = UIButton(type: .system)
-    private let playButton = UIButton(type: .system)
-    private let nextButton = UIButton(type: .system)
-    private let repeatButton = UIButton(type: .system)
+    private let shuffleButton = PlaybackIconButton()
+    private let previousButton = PlaybackIconButton()
+    private let playButton = PlaybackIconButton()
+    private let nextButton = PlaybackIconButton()
+    private let repeatButton = PlaybackIconButton()
     private let manager = MusicPlayerManager.shared
     private var isScrubbing = false
     private var artworkSongID: String?
@@ -81,18 +81,18 @@ final class PlayerViewController: UIViewController {
         view.addSubview(elapsedLabel)
         view.addSubview(durationLabel)
 
-        configureButton(shuffleButton, title: "Shuffle", action: #selector(toggleShuffle))
-        configureButton(previousButton, title: "Previous", action: #selector(previous))
-        configureButton(playButton, title: "Play", action: #selector(togglePlay))
-        configureButton(nextButton, title: "Next", action: #selector(nextTapped))
-        configureButton(repeatButton, title: "Repeat Off", action: #selector(cycleRepeat))
+        configureButton(shuffleButton, kind: .shuffle, action: #selector(toggleShuffle))
+        configureButton(previousButton, kind: .previous, action: #selector(previous))
+        configureButton(playButton, kind: .play, action: #selector(togglePlay))
+        configureButton(nextButton, kind: .next, action: #selector(nextTapped))
+        configureButton(repeatButton, kind: .repeatAll, action: #selector(cycleRepeat))
 
         let controls = UIStackView(arrangedSubviews: [shuffleButton, previousButton, playButton, nextButton, repeatButton])
         controls.translatesAutoresizingMaskIntoConstraints = false
         controls.axis = .horizontal
         controls.alignment = .center
-        controls.distribution = .fillEqually
-        controls.spacing = 2
+        controls.distribution = .equalSpacing
+        controls.spacing = 0
         view.addSubview(controls)
 
         NSLayoutConstraint.activate([
@@ -117,16 +117,15 @@ final class PlayerViewController: UIViewController {
             controls.topAnchor.constraint(equalTo: elapsedLabel.bottomAnchor, constant: 22),
             controls.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 6),
             controls.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -6),
-            controls.heightAnchor.constraint(equalToConstant: 52),
+            controls.heightAnchor.constraint(equalToConstant: 60),
             controls.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -12)
         ])
     }
 
-    private func configureButton(_ button: UIButton, title: String, action: Selector) {
-        button.setTitle(title, for: .normal)
-        button.setTitleColor(PlayerTheme.secondary, for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 11, weight: .medium)
-        button.titleLabel?.adjustsFontSizeToFitWidth = true
+    private func configureButton(_ button: PlaybackIconButton, kind: PlaybackIconKind, action: Selector) {
+        button.iconKind = kind
+        button.iconColor = PlayerTheme.secondary
+        button.dominant = kind == .play
         button.addTarget(self, action: action, for: .touchUpInside)
     }
 
@@ -147,13 +146,11 @@ final class PlayerViewController: UIViewController {
             slider.maximumValue = Float(max(1, song.duration))
             slider.value = Float(min(current, song.duration))
         }
-        playButton.setTitle(manager.isPlaying ? "Pause" : "Play", for: .normal)
-        playButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
-        playButton.setTitleColor(PlayerTheme.primary, for: .normal)
-        shuffleButton.alpha = manager.shuffle ? 1 : 0.5
-        shuffleButton.setTitleColor(manager.shuffle ? PlayerTheme.accent : PlayerTheme.secondary, for: .normal)
-        repeatButton.setTitle(repeatTitle(), for: .normal)
-        repeatButton.setTitleColor(manager.repeatMode == .off ? PlayerTheme.secondary : PlayerTheme.accent, for: .normal)
+        playButton.iconKind = manager.isPlaying ? .pause : .play
+        playButton.iconColor = .black
+        shuffleButton.iconColor = manager.shuffle ? PlayerTheme.accent : PlayerTheme.secondary
+        repeatButton.iconKind = manager.repeatMode == .one ? .repeatOne : .repeatAll
+        repeatButton.iconColor = manager.repeatMode == .off ? PlayerTheme.secondary : PlayerTheme.accent
     }
 
     @objc private func sliderBegan() { isScrubbing = true }
@@ -166,14 +163,6 @@ final class PlayerViewController: UIViewController {
     MusicPlayerManager.shared.next()
 }
     @objc private func cycleRepeat() { manager.repeatMode = RepeatMode(rawValue: (manager.repeatMode.rawValue + 1) % 3) ?? .off; refresh() }
-
-    private func repeatTitle() -> String {
-        switch manager.repeatMode {
-        case .off: return "Repeat Off"
-        case .all: return "Repeat All"
-        case .one: return "Repeat One"
-        }
-    }
 
     private func format(_ seconds: TimeInterval) -> String { String(format: "%d:%02d", max(0, Int(seconds)) / 60, max(0, Int(seconds)) % 60) }
 }
