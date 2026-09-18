@@ -79,7 +79,10 @@ enum PlaybackIconFactory {
         let yTop = rect.minY + rect.height * 0.28
         let yBottom = rect.maxY - rect.height * 0.28
         let mid = rect.midX
-        p.move(to: CGPoint(x: x0, y: yTop)); p.addLine(to: CGPoint(x: x0 + rect.width * 0.18, y: yTop)); p.addLine(to: CGPoint(x: x1 - rect.width * 0.18, yBottom)); p.addLine(to: CGPoint(x: x1, y: yBottom))
+        p.move(to: CGPoint(x: x0, y: yTop))
+        p.addLine(to: CGPoint(x: x0 + rect.width * 0.18, y: yTop))
+        p.addLine(to: CGPoint(x: x1 - rect.width * 0.18, y: yBottom))
+        p.addLine(to: CGPoint(x: x1, y: yBottom))
         p.move(to: CGPoint(x: x0, y: yBottom)); p.addLine(to: CGPoint(x: x0 + rect.width * 0.18, y: yBottom)); p.addLine(to: CGPoint(x: mid, y: rect.midY)); p.addLine(to: CGPoint(x: x1 - rect.width * 0.18, y: yTop)); p.addLine(to: CGPoint(x: x1, y: yTop))
         addArrow(to: p, tip: CGPoint(x: x1, y: yBottom), direction: CGPoint(x: -1, y: 0))
         addArrow(to: p, tip: CGPoint(x: x1, y: yTop), direction: CGPoint(x: -1, y: 0))
