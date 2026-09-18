@@ -65,7 +65,7 @@ final class PlayerViewController: UIViewController {
         configureButton(shuffleButton, title: "Shuffle", action: #selector(toggleShuffle))
         configureButton(previousButton, title: "Previous", action: #selector(previous))
         configureButton(playButton, title: "Play", action: #selector(togglePlay))
-        configureButton(nextButton, title: "Next", action: #selector(next))
+        configureButton(nextButton, title: "Next", action: #selector(nextTapped))
         configureButton(repeatButton, title: "Repeat Off", action: #selector(cycleRepeat))
 
         let controls = UIStackView(arrangedSubviews: [shuffleButton, previousButton, playButton, nextButton, repeatButton])
@@ -138,7 +138,9 @@ final class PlayerViewController: UIViewController {
     @objc private func toggleShuffle() { manager.shuffle.toggle(); refresh() }
     @objc private func previous() { manager.previous() }
     @objc private func togglePlay() { manager.togglePlayPause() }
-    @objc private func next() { manager.next() }
+    @objc private func nextTapped() {
+    MusicPlayerManager.shared.next()
+}
     @objc private func cycleRepeat() { manager.repeatMode = RepeatMode(rawValue: (manager.repeatMode.rawValue + 1) % 3) ?? .off; refresh() }
 
     private func repeatTitle() -> String {
