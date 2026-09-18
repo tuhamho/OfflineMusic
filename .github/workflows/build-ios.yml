@@ -1,0 +1,20 @@
+name: Build unsigned iOS app
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          set -euo pipefail
+          xcodebuild -project OfflineMusic.xcodeproj -scheme OfflineMusic -configuration Release -sdk iphoneos CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tee xcodebuild.log
+          APP_PATH=$(find "$HOME/Library/Developer/Xcode/DerivedData" -type d -path '*/Build/Products/Release-iphoneos/Offline Music.app' -print -quit)
+          test -n "$APP_PATH" && test -d "$APP_PATH"
+          mkdir -p package/Payload
+          cp -R "$APP_PATH" package/Payload/'Offline Music.app'
+          (cd package && zip -qry ../OfflineMusic-unsigned.ipa Payload)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OfflineMusic-unsigned-ipa
+          path: OfflineMusic-unsigned.ipa
