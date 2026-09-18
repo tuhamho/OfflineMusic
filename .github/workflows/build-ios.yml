@@ -1,20 +1,125 @@
 name: Build unsigned iOS app
-on: [push, workflow_dispatch]
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: macos-14
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Build
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 15.4
         run: |
-          set -euo pipefail
-          xcodebuild -project OfflineMusic.xcodeproj -scheme OfflineMusic -configuration Release -sdk iphoneos CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tee xcodebuild.log
-          APP_PATH=$(find "$HOME/Library/Developer/Xcode/DerivedData" -type d -path '*/Build/Products/Release-iphoneos/Offline Music.app' -print -quit)
-          test -n "$APP_PATH" && test -d "$APP_PATH"
-          mkdir -p package/Payload
-          cp -R "$APP_PATH" package/Payload/'Offline Music.app'
-          (cd package && zip -qry ../OfflineMusic-unsigned.ipa Payload)
-      - uses: actions/upload-artifact@v4
+          sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Build iOS app
+        run: |
+          set -e
+
+          rm -rf "$HOME/Library/Developer/Xcode/DerivedData/OfflineMusic"
+
+          xcodebuild \
+            -project OfflineMusic.xcodeproj \
+            -scheme OfflineMusic \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath "$HOME/Library/Developer/Xcode/DerivedData/OfflineMusic" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Find built app
+        run: |
+          set -e
+
+          APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/OfflineMusic/Build/Products/Release-iphoneos/Offline Music.app"
+
+          if [ ! -d "$APP_PATH" ]; then
+            echo "ERROR: App not found at:"
+            echo "$APP_PATH"
+            echo "Searching for .app..."
+            find "$HOME/Library/Developer/Xcode/DerivedData/OfflineMusic" -name "*.app" -type d
+            exit 1
+          fi
+
+          echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
+          echo "Found app:"
+          echo "$APP_PATH"
+
+      - name: Check Info.plist
+        run: |
+          set -e
+
+          echo "Bundle identifier:"
+          /usr/libexec/PlistBuddy \
+            -c "Print :CFBundleIdentifier" \
+            "$APP_PATH/Info.plist"
+
+          echo "Executable:"
+          /usr/libexec/PlistBuddy \
+            -c "Print :CFBundleExecutable" \
+            "$APP_PATH/Info.plist"
+
+      - name: Ad-hoc sign with entitlements
+        run: |
+          set -e
+
+          cat > /tmp/entitlements.plist <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>application-identifier</key>
+              <string>com.local.offlinemusic</string>
+          </dict>
+          </plist>
+          EOF
+
+          echo "Signing:"
+          echo "$APP_PATH"
+
+          /usr/bin/codesign \
+            --force \
+            --sign - \
+            --entitlements /tmp/entitlements.plist \
+            "$APP_PATH"
+
+          echo "Checking signature..."
+          /usr/bin/codesign -d --verbose=4 "$APP_PATH" 2>&1
+
+          echo "Embedded entitlements:"
+          /usr/bin/codesign -d --entitlements :- "$APP_PATH" 2>&1
+
+      - name: Package IPA
+        run: |
+          set -e
+
+          rm -rf Payload
+          rm -f OfflineMusic-unsigned.ipa
+
+          mkdir -p Payload
+
+          cp -R "$APP_PATH" Payload/
+
+          /usr/bin/zip -qry OfflineMusic-unsigned.ipa Payload
+
+          echo "IPA created:"
+          ls -lh OfflineMusic-unsigned.ipa
+
+          echo "IPA contents:"
+          unzip -l OfflineMusic-unsigned.ipa | head -50
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
         with:
           name: OfflineMusic-unsigned-ipa
           path: OfflineMusic-unsigned.ipa
+          if-no-files-found: error
